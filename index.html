@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¡A Jugar!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --accent1: #f5a623;
+    --accent2: #7ed321;
+    --accent3: #e74c8b;
+    --accent4: #4ecdc4;
+    --text: #ffffff;
+    --text-dim: #a0a8c0;
+    --radius: 24px;
+    --focus-ring: 0 0 0 6px var(--accent1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 30% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 55% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(2px 2px at 70% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 85% 35%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 20% 85%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 92% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 45% 45%, rgba(255,255,255,0.2) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .screen {
+    position: relative;
+    z-index: 1;
+    width: 100vw;
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 28px;
+    animation: fadeIn 0.35s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  h1.title {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(3rem, 7vw, 6rem);
+    text-align: center;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent1), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 4px 16px rgba(245,166,35,0.4));
+  }
+
+  h2.subtitle {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.4rem, 3vw, 2.6rem);
+    text-align: center;
+    color: var(--text-dim);
+  }
+
+  /* ── Cards shared ── */
+  .card-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .sel-card {
+    background: var(--panel);
+    border: 4px solid transparent;
+    border-radius: var(--radius);
+    padding: 22px 28px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    min-width: 140px;
+    outline: none;
+  }
+  .sel-card .c-emoji { font-size: clamp(2.8rem, 5.5vw, 4.5rem); line-height: 1; }
+  .sel-card .c-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 2vw, 1.6rem);
+    color: var(--text);
+    text-align: center;
+  }
+  .sel-card .c-sub {
+    font-size: clamp(0.75rem, 1.4vw, 1rem);
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .sel-card.focused {
+    border-color: var(--accent1);
+    box-shadow: var(--focus-ring);
+    transform: scale(1.08);
+  }
+
+  /* difficulty card accent colors */
+  .sel-card[data-diff="facil"].focused   { border-color: var(--accent2); box-shadow: 0 0 0 6px var(--accent2); }
+  .sel-card[data-diff="normal"].focused  { border-color: var(--accent1); box-shadow: 0 0 0 6px var(--accent1); }
+  .sel-card[data-diff="dificil"].focused { border-color: var(--accent3); box-shadow: 0 0 0 6px var(--accent3); }
+
+  /* ── Player & score badges ── */
+  .player-badge {
+    position: fixed; top: 20px; right: 28px;
+    background: var(--panel);
+    border: 3px solid var(--accent1);
+    border-radius: 40px;
+    padding: 8px 20px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    z-index: 100;
+  }
+  .score-badge {
+    position: fixed; top: 20px; left: 28px;
+    background: var(--panel);
+    border: 3px solid var(--accent2);
+    border-radius: 40px;
+    padding: 8px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    z-index: 100;
+  }
+
+  /* ── Game menu buttons ── */
+  .game-btn {
+    background: var(--panel);
+    border: 4px solid transparent;
+    border-radius: var(--radius);
+    padding: 26px 34px;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    min-width: 190px;
+    outline: none;
+  }
+  .game-btn .g-emoji { font-size: clamp(2.2rem, 4.5vw, 3.8rem); }
+  .game-btn .g-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 2vw, 1.5rem);
+    color: var(--text); text-align: center;
+  }
+  .game-btn.focused {
+    border-color: var(--accent4);
+    box-shadow: 0 0 0 6px var(--accent4);
+    transform: scale(1.08);
+  }
+
+  /* ── Game area ── */
+  .game-area {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 28px; width: 100%; max-width: 900px;
+  }
+  .question-display {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 36px 56px;
+    text-align: center;
+    width: 100%; min-height: 170px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+  }
+  .question-text {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+    color: var(--text); text-align: center;
+  }
+  .objects-display {
+    font-size: clamp(1.8rem, 4.5vw, 3.8rem);
+    letter-spacing: 6px; text-align: center;
+    line-height: 1.5; padding: 10px; max-width: 600px; word-break: break-all;
+  }
+  .letter-display {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(5rem, 14vw, 11rem);
+    color: var(--accent1);
+    filter: drop-shadow(0 8px 24px rgba(245,166,35,0.5));
+    line-height: 1;
+  }
+
+  /* ── Options ── */
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px; width: 100%;
+  }
+  .option-btn {
+    background: var(--panel);
+    border: 4px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 22px 14px;
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.6rem, 3.8vw, 3.2rem);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    text-align: center; outline: none;
+    min-height: 90px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .option-btn.focused { border-color: var(--accent1); box-shadow: var(--focus-ring); transform: scale(1.06); background: rgba(245,166,35,0.15); }
+  .option-btn.correct { border-color: var(--accent2); background: rgba(126,211,33,0.25); box-shadow: 0 0 0 6px var(--accent2); animation: pulse 0.3s ease; }
+  .option-btn.wrong   { border-color: var(--accent3); background: rgba(231,76,139,0.2);  box-shadow: 0 0 0 6px var(--accent3); animation: shake 0.3s ease; }
+
+  /* Intruso */
+  .intruso-grid {
+    display: grid; grid-template-columns: repeat(2,1fr);
+    gap: 14px; width: 100%; max-width: 580px;
+  }
+  .intruso-btn {
+    background: var(--panel);
+    border: 4px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 26px 14px;
+    font-size: clamp(2.2rem, 5.5vw, 4.5rem);
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    text-align: center; outline: none;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .intruso-btn.focused { border-color: var(--accent4); box-shadow: 0 0 0 6px var(--accent4); transform: scale(1.06); }
+  .intruso-btn.correct { border-color: var(--accent2); background: rgba(126,211,33,0.2); box-shadow: 0 0 0 6px var(--accent2); }
+  .intruso-btn.wrong   { border-color: var(--accent3); background: rgba(231,76,139,0.2); }
+
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1.06)} }
+  @keyframes shake { 0%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} 100%{transform:translateX(0)} }
+
+
+  /* ── Planetas ── */
+  .planet-img {
+    width: clamp(180px, 28vw, 320px);
+    height: clamp(180px, 28vw, 320px);
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255,255,255,0.15);
+    box-shadow: 0 0 40px rgba(100,160,255,0.4), 0 0 80px rgba(100,100,255,0.2);
+    display: block;
+    margin: 0 auto;
+  }
+  .planet-hint {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.3rem, 2.8vw, 2.2rem);
+    color: var(--accent4);
+    text-align: center;
+    padding: 0 20px;
+  }
+  .planet-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px; width: 100%;
+  }
+  .planet-opt {
+    background: var(--panel);
+    border: 4px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 18px 10px;
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 2.2vw, 1.6rem);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    text-align: center; outline: none;
+    min-height: 70px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .planet-opt.focused { border-color: var(--accent4); box-shadow: 0 0 0 6px var(--accent4); transform: scale(1.06); background: rgba(78,205,196,0.15); }
+  .planet-opt.correct { border-color: var(--accent2); background: rgba(126,211,33,0.25); box-shadow: 0 0 0 6px var(--accent2); animation: pulse 0.3s ease; }
+  .planet-opt.wrong   { border-color: var(--accent3); background: rgba(231,76,139,0.2);  box-shadow: 0 0 0 6px var(--accent3); animation: shake 0.3s ease; }
+
+  /* ── Feedback overlay ── */
+  .feedback-overlay {
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    z-index: 200;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    flex-direction: column; gap: 18px;
+  }
+  .feedback-overlay.show { display: flex; animation: fadeIn 0.3s ease; }
+  .feedback-emoji { font-size: clamp(5rem, 12vw, 10rem); animation: bounceIn 0.4s cubic-bezier(0.68,-0.55,0.265,1.55); }
+  .feedback-text  { font-family:'Fredoka One',cursive; font-size:clamp(1.8rem,4.5vw,3.8rem); text-align:center; }
+  @keyframes bounceIn { from{transform:scale(0)} to{transform:scale(1)} }
+
+  /* ── Nav bars ── */
+  .hint-bar {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.07);
+    border-radius: 40px; padding: 9px 26px;
+    font-size: clamp(0.75rem, 1.4vw, 1rem);
+    color: var(--text-dim);
+    display: flex; gap: 18px; z-index: 100;
+  }
+  .hint-bar span { display:flex; align-items:center; gap:5px; }
+
+  /* ── Back / Home buttons ── */
+  .nav-btn {
+    position: fixed;
+    background: var(--panel);
+    border-radius: 40px;
+    padding: 9px 22px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.05rem;
+    cursor: pointer;
+    z-index: 100;
+    transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .nav-btn.home-btn  { bottom: 18px; left: 28px;  border: 3px solid rgba(255,255,255,0.15); color: var(--text-dim); }
+  .nav-btn.back-btn  { bottom: 18px; right: 28px; border: 3px solid rgba(255,255,255,0.15); color: var(--text-dim); }
+  .nav-btn.home-btn.focused, .nav-btn.home-btn:focus { border-color: var(--accent1); color: var(--text); box-shadow: 0 0 0 4px var(--accent1); }
+  .nav-btn.back-btn.focused, .nav-btn.back-btn:focus { border-color: var(--accent3); color: var(--text); box-shadow: 0 0 0 4px var(--accent3); }
+
+  /* ── Progress dots ── */
+  .progress-dots { display:flex; gap:10px; }
+  .dot { width:13px; height:13px; border-radius:50%; background:rgba(255,255,255,0.18); transition:background 0.3s; }
+  .dot.done    { background: var(--accent2); }
+  .dot.current { background: var(--accent1); transform:scale(1.35); }
+
+  /* difficulty badge */
+  .diff-badge {
+    position: fixed; top: 60px; right: 28px;
+    background: var(--panel);
+    border: 2px solid var(--text-dim);
+    border-radius: 40px;
+    padding: 5px 16px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--text-dim);
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1: Avatar ══ -->
+<div class="screen active" id="screen-avatar">
+  <h1 class="title">¡A Jugar!</h1>
+  <h2 class="subtitle">¿Quién juega hoy?</h2>
+  <div class="card-row" id="avatar-grid">
+    <div class="sel-card focused" data-player="dino" tabindex="0">
+      <span class="c-emoji">🦕</span><span class="c-label">Dino</span>
+    </div>
+    <div class="sel-card" data-player="cohete" tabindex="0">
+      <span class="c-emoji">🚀</span><span class="c-label">Cohete</span>
+    </div>
+    <div class="sel-card" data-player="leon" tabindex="0">
+      <span class="c-emoji">🦁</span><span class="c-label">León</span>
+    </div>
+    <div class="sel-card" data-player="estrella" tabindex="0">
+      <span class="c-emoji">⭐</span><span class="c-label">Estrella</span>
+    </div>
+    <div class="sel-card" data-player="robot" tabindex="0">
+      <span class="c-emoji">🤖</span><span class="c-label">Robot</span>
+    </div>
+  </div>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- ══ SCREEN 2: Difficulty ══ -->
+<div class="screen" id="screen-diff">
+  <h2 class="subtitle">¿Qué tan difícil?</h2>
+  <div class="card-row" id="diff-grid">
+    <div class="sel-card focused" data-diff="facil" tabindex="0">
+      <span class="c-emoji">⭐</span>
+      <span class="c-label">Fácil</span>
+      <span class="c-sub">Contar hasta 5 · Solo vocales</span>
+    </div>
+    <div class="sel-card" data-diff="normal" tabindex="0">
+      <span class="c-emoji">⭐⭐</span>
+      <span class="c-label">Normal</span>
+      <span class="c-sub">Contar hasta 10 · Consonantes</span>
+    </div>
+    <div class="sel-card" data-diff="dificil" tabindex="0">
+      <span class="c-emoji">⭐⭐⭐</span>
+      <span class="c-label">Difícil</span>
+      <span class="c-sub">Contar hasta 20 · Alfabeto completo</span>
+    </div>
+  </div>
+  <button class="nav-btn home-btn" id="diff-home">🏠 Inicio</button>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- ══ SCREEN 3: Game Menu ══ -->
+<div class="screen" id="screen-menu">
+  <div class="player-badge" id="menu-badge"></div>
+  <div class="diff-badge"   id="menu-diff-badge"></div>
+  <h2 class="subtitle">¿A qué jugamos?</h2>
+  <div class="card-row" id="game-menu">
+    <div class="game-btn focused" data-game="contar" tabindex="0">
+      <span class="g-emoji">🍎</span><span class="g-name">¡A contar!</span>
+    </div>
+    <div class="game-btn" data-game="letras" tabindex="0">
+      <span class="g-emoji">🔤</span><span class="g-name">¿Qué letra es?</span>
+    </div>
+    <div class="game-btn" data-game="intruso" tabindex="0">
+      <span class="g-emoji">🔍</span><span class="g-name">¿Cuál no va?</span>
+    </div>
+    <div class="game-btn" data-game="planetas" tabindex="0">
+      <span class="g-emoji">🪐</span><span class="g-name">¡Planetas!</span>
+    </div>
+  </div>
+  <button class="nav-btn home-btn" id="menu-home">🏠 Inicio</button>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Jugar</span></div>
+</div>
+
+<!-- ══ SCREEN 4: Contar ══ -->
+<div class="screen" id="screen-contar">
+  <div class="player-badge" id="contar-badge"></div>
+  <div class="score-badge"  id="contar-score">⭐ 0</div>
+  <div class="game-area">
+    <div class="progress-dots" id="contar-dots"></div>
+    <div class="question-display">
+      <div class="question-text">¿Cuántos hay?</div>
+      <div class="objects-display" id="contar-objects"></div>
+    </div>
+    <div class="options-grid" id="contar-options"></div>
+  </div>
+  <button class="nav-btn home-btn" id="contar-home">🏠 Inicio</button>
+  <button class="nav-btn back-btn" id="contar-back">↩ Menú</button>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- ══ SCREEN 5: Letras ══ -->
+<div class="screen" id="screen-letras">
+  <div class="player-badge" id="letras-badge"></div>
+  <div class="score-badge"  id="letras-score">⭐ 0</div>
+  <div class="game-area">
+    <div class="progress-dots" id="letras-dots"></div>
+    <div class="question-display">
+      <div class="question-text" id="letras-question"></div>
+      <div class="letter-display" id="letras-letter"></div>
+    </div>
+    <div class="options-grid" id="letras-options"></div>
+  </div>
+  <button class="nav-btn home-btn" id="letras-home">🏠 Inicio</button>
+  <button class="nav-btn back-btn" id="letras-back">↩ Menú</button>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- ══ SCREEN 6: Intruso ══ -->
+<div class="screen" id="screen-intruso">
+  <div class="player-badge" id="intruso-badge"></div>
+  <div class="score-badge"  id="intruso-score">⭐ 0</div>
+  <div class="game-area">
+    <div class="progress-dots" id="intruso-dots"></div>
+    <div class="question-display">
+      <div class="question-text">¿Cuál NO va con los demás?</div>
+    </div>
+    <div class="intruso-grid" id="intruso-options"></div>
+  </div>
+  <button class="nav-btn home-btn" id="intruso-home">🏠 Inicio</button>
+  <button class="nav-btn back-btn" id="intruso-back">↩ Menú</button>
+  <div class="hint-bar"><span>◀ ▶ ▲ ▼ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- ═══ SCREEN 7: Planetas ═══ -->
+<div class="screen" id="screen-planetas">
+  <div class="player-badge" id="planetas-badge"></div>
+  <div class="score-badge"  id="planetas-score">⭐ 0</div>
+  <div class="game-area">
+    <div class="progress-dots" id="planetas-dots"></div>
+    <div class="question-display">
+      <div class="planet-hint" id="planetas-hint"></div>
+      <img class="planet-img" id="planetas-img" src="" alt="planeta" />
+    </div>
+    <div class="planet-options" id="planetas-options"></div>
+  </div>
+  <button class="nav-btn home-btn" id="planetas-home">🏠 Inicio</button>
+  <button class="nav-btn back-btn" id="planetas-back">↩ Menú</button>
+  <div class="hint-bar"><span>◀ ▶ Mover</span><span>OK Elegir</span></div>
+</div>
+
+<!-- Feedback -->
+<div class="feedback-overlay" id="feedback">
+  <div class="feedback-emoji" id="feedback-emoji">🎉</div>
+  <div class="feedback-text"  id="feedback-text">¡Muy bien!</div>
+</div>
+
+<script>
+// ══════════════════ STATE ══════════════════
+const AVATARS = { dino:'🦕', cohete:'🚀', leon:'🦁', estrella:'⭐', robot:'🤖' };
+const DIFF_LABELS = { facil:'⭐ Fácil', normal:'⭐⭐ Normal', dificil:'⭐⭐⭐ Difícil' };
+
+const state = {
+  player: null,
+  diff: null,         // 'facil' | 'normal' | 'dificil'
+  score: 0,
+  round: 0,
+  totalRounds: 5,
+  focusIdx: 0,
+  screen: 'screen-avatar',
+  answering: false,
+};
+
+// ══════════════════ TTS ══════════════════
+function speak(text, rate=0.85) {
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'es-ES'; u.rate = rate; u.pitch = 1.1;
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(v => v.lang.startsWith('es') && v.localService) || voices.find(v => v.lang.startsWith('es'));
+  if (v) u.voice = v;
+  window.speechSynthesis.speak(u);
+}
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+// ══════════════════ SCREEN ══════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  state.screen = id;
+  state.focusIdx = 0;
+}
+
+function updateBadges() {
+  const txt = `${AVATARS[state.player]}`;
+  document.querySelectorAll('.player-badge').forEach(el => el.textContent = txt);
+  if (document.getElementById('menu-diff-badge'))
+    document.getElementById('menu-diff-badge').textContent = DIFF_LABELS[state.diff] || '';
+}
+
+// ══════════════════ NAV ══════════════════
+function navItems(containerId, selector, e, mode, onSelect) {
+  if (state.answering) return;
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  const items = [...cont.querySelectorAll(selector)];
+  if (!items.length) return;
+  let idx = state.focusIdx;
+
+  if (mode === 'h') {
+    if      (e.key==='ArrowLeft'||e.key==='ArrowUp')    idx = Math.max(0, idx-1);
+    else if (e.key==='ArrowRight'||e.key==='ArrowDown') idx = Math.min(items.length-1, idx+1);
+    else if (e.key==='Enter'||e.key===' ') { onSelect(items[idx]); return; }
+    else return;
+  } else if (mode === 'g2') {
+    const cols=2, row=Math.floor(idx/cols), col=idx%cols;
+    if      (e.key==='ArrowLeft')  idx = col>0 ? idx-1 : idx;
+    else if (e.key==='ArrowRight') idx = col<cols-1 ? idx+1 : idx;
+    else if (e.key==='ArrowUp')    idx = row>0 ? idx-cols : idx;
+    else if (e.key==='ArrowDown')  idx = idx+cols<items.length ? idx+cols : idx;
+    else if (e.key==='Enter'||e.key===' ') { onSelect(items[idx]); return; }
+    else return;
+  }
+
+  items[state.focusIdx].classList.remove('focused');
+  state.focusIdx = idx;
+  items[idx].classList.add('focused');
+  e.preventDefault();
+}
+
+// ══════════════════ KEYBOARD ══════════════════
+document.addEventListener('keydown', e => {
+  const s = state.screen;
+  if (s==='screen-avatar')  navItems('avatar-grid', '.sel-card', e, 'h', handleAvatarPick);
+  else if (s==='screen-diff') {
+    if (e.key==='Backspace') { goHome(); return; }
+    navItems('diff-grid', '.sel-card', e, 'h', handleDiffPick);
+  }
+  else if (s==='screen-menu') {
+    if (e.key==='Backspace') { goHome(); return; }
+    navItems('game-menu', '.game-btn', e, 'h', handleGamePick);
+  }
+  else if (s==='screen-contar') {
+    if (e.key==='Backspace') { goMenu(); return; }
+    navItems('contar-options', '.option-btn', e, 'h', el => handleContarAnswer(el, contarData[state.round]?.n));
+  }
+  else if (s==='screen-letras') {
+    if (e.key==='Backspace') { goMenu(); return; }
+    navItems('letras-options', '.option-btn', e, 'h', el => handleLetrasAnswer(el, letrasData[state.round]?.letter, letrasData[state.round]));
+  }
+  else if (s==='screen-intruso') {
+    if (e.key==='Backspace') { goMenu(); return; }
+    navItems('intruso-options', '.intruso-btn', e, 'g2', el => handleIntrusoAnswer(el, intrusoData[state.round]?.intruso, parseInt(el.dataset.idx)));
+  }
+  else if (s==='screen-planetas') {
+    if (e.key==='Backspace') { goMenu(); return; }
+    navItems('planetas-options', '.planet-opt', e, 'h', el => handlePlanetaAnswer(el, planetasData[state.round]?.nombre));
+  }
+});
+
+// ══════════════════ HANDLERS ══════════════════
+function handleAvatarPick(el) {
+  state.player = el.dataset.player;
+  showScreen('screen-diff');
+  resetFocus('diff-grid', '.sel-card');
+  speak('¿Qué tan difícil quieres jugar?');
+}
+
+function handleDiffPick(el) {
+  state.diff = el.dataset.diff;
+  showScreen('screen-menu');
+  resetFocus('game-menu', '.game-btn');
+  updateBadges();
+  speak('¡Genial! ¿A qué jugamos?');
+}
+
+function handleGamePick(el) {
+  const g = el.dataset.game;
+  if (g==='contar')  startContar();
+  else if (g==='letras')  startLetras();
+  else if (g==='intruso') startIntruso();
+  else if (g==='planetas') startPlanetas();
+}
+
+function goHome() {
+  window.speechSynthesis.cancel();
+  showScreen('screen-avatar');
+  resetFocus('avatar-grid', '.sel-card');
+  speak('¿Quién juega hoy?');
+}
+
+function goMenu() {
+  window.speechSynthesis.cancel();
+  showScreen('screen-menu');
+  resetFocus('game-menu', '.game-btn');
+  updateBadges();
+  speak('¿A qué jugamos ahora?');
+}
+
+function resetFocus(containerId, selector) {
+  state.focusIdx = 0;
+  const items = document.querySelectorAll(`#${containerId} ${selector}`);
+  items.forEach(i => i.classList.remove('focused'));
+  if (items[0]) items[0].classList.add('focused');
+}
+
+// ══════════════════ CLICK SUPPORT ══════════════════
+function addClickNav(selector, handler) {
+  document.querySelectorAll(selector).forEach((el, i) => {
+    el.addEventListener('click', () => handler(el));
+    el.addEventListener('mouseenter', () => {
+      const parent = el.parentNode;
+      [...parent.querySelectorAll(selector.split(' ').pop())].forEach(c => c.classList.remove('focused'));
+      el.classList.add('focused');
+      state.focusIdx = i;
+    });
+  });
+}
+addClickNav('#avatar-grid .sel-card', handleAvatarPick);
+addClickNav('#diff-grid .sel-card', handleDiffPick);
+addClickNav('#game-menu .game-btn', handleGamePick);
+
+// Nav buttons
+document.getElementById('diff-home').addEventListener('click', goHome);
+document.getElementById('menu-home').addEventListener('click', goHome);
+['contar','letras','intruso','planetas'].forEach(g => {
+  document.getElementById(`${g}-home`).addEventListener('click', goHome);
+  document.getElementById(`${g}-back`).addEventListener('click', goMenu);
+});
+
+// ══════════════════ DATA ══════════════════
+const EMOJIS_CONTAR = ['🍎','🌟','🐶','🎈','🍕','🚗','🌸','🦋','🎵','🏆','🍦','🐸','🎀','🍩','🌈'];
+
+// Letras pool por dificultad (para modo audio)
+const LETRAS = {
+  facil:   ['A','E','I','O','U'],
+  normal:  ['A','E','I','O','U','B','C','D','F','G','H','J','L','M','N'],
+  dificil: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
+};
+
+// Diccionario emoji → { palabra, letra inicial } por dificultad
+const EMOJI_PALABRAS = {
+  facil: [
+    {emoji:'🍎', palabra:'Manzana',   letra:'M'},
+    {emoji:'🐘', palabra:'Elefante',  letra:'E'},
+    {emoji:'🦁', palabra:'León',      letra:'L'},
+    {emoji:'🌙', palabra:'Luna',      letra:'L'},
+    {emoji:'🐸', palabra:'Rana',      letra:'R'},
+    {emoji:'🍌', palabra:'Banana',    letra:'B'},
+    {emoji:'🐟', palabra:'Pez',       letra:'P'},
+    {emoji:'🐶', palabra:'Perro',     letra:'P'},
+    {emoji:'🌞', palabra:'Sol',       letra:'S'},
+    {emoji:'🐱', palabra:'Gato',      letra:'G'},
+  ],
+  normal: [
+    {emoji:'🍎', palabra:'Manzana',   letra:'M'},
+    {emoji:'🐘', palabra:'Elefante',  letra:'E'},
+    {emoji:'🦁', palabra:'León',      letra:'L'},
+    {emoji:'🌙', palabra:'Luna',      letra:'L'},
+    {emoji:'🐸', palabra:'Rana',      letra:'R'},
+    {emoji:'🍌', palabra:'Banana',    letra:'B'},
+    {emoji:'🐟', palabra:'Pez',       letra:'P'},
+    {emoji:'🐶', palabra:'Perro',     letra:'P'},
+    {emoji:'🌞', palabra:'Sol',       letra:'S'},
+    {emoji:'🐱', palabra:'Gato',      letra:'G'},
+    {emoji:'🦋', palabra:'Mariposa',  letra:'M'},
+    {emoji:'🚗', palabra:'Carro',     letra:'C'},
+    {emoji:'🍕', palabra:'Pizza',     letra:'P'},
+    {emoji:'🎈', palabra:'Globo',     letra:'G'},
+    {emoji:'🏠', palabra:'Casa',      letra:'C'},
+    {emoji:'🐢', palabra:'Tortuga',   letra:'T'},
+    {emoji:'🦊', palabra:'Zorro',     letra:'Z'},
+    {emoji:'🍦', palabra:'Helado',    letra:'H'},
+    {emoji:'🌸', palabra:'Flor',      letra:'F'},
+    {emoji:'🎵', palabra:'Nota',      letra:'N'},
+  ],
+  dificil: [
+    {emoji:'🍎', palabra:'Manzana',   letra:'M'},
+    {emoji:'🐘', palabra:'Elefante',  letra:'E'},
+    {emoji:'🦁', palabra:'León',      letra:'L'},
+    {emoji:'🌙', palabra:'Luna',      letra:'L'},
+    {emoji:'🐸', palabra:'Rana',      letra:'R'},
+    {emoji:'🍌', palabra:'Banana',    letra:'B'},
+    {emoji:'🐟', palabra:'Pez',       letra:'P'},
+    {emoji:'🐶', palabra:'Perro',     letra:'P'},
+    {emoji:'🌞', palabra:'Sol',       letra:'S'},
+    {emoji:'🐱', palabra:'Gato',      letra:'G'},
+    {emoji:'🦋', palabra:'Mariposa',  letra:'M'},
+    {emoji:'🚗', palabra:'Carro',     letra:'C'},
+    {emoji:'🍕', palabra:'Pizza',     letra:'P'},
+    {emoji:'🎈', palabra:'Globo',     letra:'G'},
+    {emoji:'🏠', palabra:'Casa',      letra:'C'},
+    {emoji:'🐢', palabra:'Tortuga',   letra:'T'},
+    {emoji:'🦊', palabra:'Zorro',     letra:'Z'},
+    {emoji:'🍦', palabra:'Helado',    letra:'H'},
+    {emoji:'🌸', palabra:'Flor',      letra:'F'},
+    {emoji:'🎵', palabra:'Nota',      letra:'N'},
+    {emoji:'🐬', palabra:'Delfín',    letra:'D'},
+    {emoji:'🦅', palabra:'Águila',    letra:'A'},
+    {emoji:'🚀', palabra:'Cohete',    letra:'C'},
+    {emoji:'🎂', palabra:'Pastel',    letra:'P'},
+    {emoji:'🌈', palabra:'Arcoíris',  letra:'A'},
+    {emoji:'🐧', palabra:'Pingüino',  letra:'P'},
+    {emoji:'🦒', palabra:'Jirafa',    letra:'J'},
+    {emoji:'🍓', palabra:'Fresa',     letra:'F'},
+    {emoji:'🐝', palabra:'Abeja',     letra:'A'},
+    {emoji:'🎃', palabra:'Vampiro',   letra:'V'},
+  ],
+};
+
+const INTRUSO_DATA = [
+  { items:['🐶','🐱','🐭','🚗'],  intruso:3 },
+  { items:['🍎','🍌','🚌','🍇'],  intruso:2 },
+  { items:['✈️','🚗','🍕','🚢'], intruso:2 },
+  { items:['🔴','🟡','🟢','🐸'],  intruso:3 },
+  { items:['⚽','🏀','🎸','🎾'],  intruso:2 },
+  { items:['🌞','🌙','⭐','🍦'],  intruso:3 },
+  { items:['👕','👖','🎩','🍕'],  intruso:3 },
+  { items:['🐘','🦁','🍕','🐒'],  intruso:2 },
+  { items:['🍇','🍊','🍋','🏠'],  intruso:3 },
+  { items:['📚','✏️','🖊️','🐦'], intruso:3 },
+  { items:['🎂','🍰','🍫','🚀'],  intruso:3 },
+  { items:['🐠','🐬','🦈','🐴'],  intruso:3 },
+];
+
+// ══════════════════ UTILS ══════════════════
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function genOpts(correct, count, min, max) {
+  const opts=new Set([correct]); let t=0;
+  while(opts.size<count&&t++<200) { const r=Math.floor(Math.random()*(max-min+1))+min; if(r!==correct) opts.add(r); }
+  return shuffle([...opts]);
+}
+function renderDots(id, total, cur) {
+  const c=document.getElementById(id); c.innerHTML='';
+  for(let i=0;i<total;i++){const d=document.createElement('div');d.className='dot'+(i<cur?' done':i===cur?' current':'');c.appendChild(d);}
+}
+function getPositive() {
+  return ['¡Muy bien!','¡Excelente!','¡Lo lograste!','¡Genial!','¡Correcto!','¡Eso es!','¡Súper!'][Math.floor(Math.random()*7)];
+}
+function diffMax() { return state.diff==='facil'?5:state.diff==='normal'?10:20; }
+
+// ══════════════════ FEEDBACK ══════════════════
+function showFB(ok, emoji, text) {
+  document.getElementById('feedback-emoji').textContent = emoji||(ok?'🎉':'😅');
+  document.getElementById('feedback-text').textContent  = text||(ok?getPositive():'¡Casi!');
+  document.getElementById('feedback').classList.add('show');
+}
+function hideFB() { document.getElementById('feedback').classList.remove('show'); }
+
+// ══════════════════ CONTAR ══════════════════
+let contarData=[];
+function startContar() {
+  state.score=0; state.round=0; state.answering=false;
+  showScreen('screen-contar'); updateBadges();
+  const max=diffMax(), used=new Set(); contarData=[];
+  while(contarData.length<state.totalRounds){
+    const n=Math.floor(Math.random()*max)+1;
+    if(!used.has(n)){used.add(n);contarData.push({n,emoji:EMOJIS_CONTAR[Math.floor(Math.random()*EMOJIS_CONTAR.length)]});}
+  }
+  renderContar(); speak('¡A contar! ¿Cuántos hay?');
+}
+function renderContar() {
+  if(state.round>=state.totalRounds){endGame();return;}
+  const {n,emoji}=contarData[state.round];
+  renderDots('contar-dots',state.totalRounds,state.round);
+  document.getElementById('contar-score').textContent=`⭐ ${state.score}`;
+  document.getElementById('contar-objects').textContent=emoji.repeat(n);
+  const opts=genOpts(n,3,1,diffMax());
+  const cont=document.getElementById('contar-options'); cont.innerHTML='';
+  opts.forEach((opt,i)=>{
+    const b=document.createElement('div');
+    b.className='option-btn'+(i===0?' focused':'');
+    b.textContent=opt; b.dataset.val=opt; b.dataset.correct=opt===n?'true':'false';
+    b.addEventListener('click',()=>handleContarAnswer(b,n));
+    cont.appendChild(b);
+  });
+  state.focusIdx=0; state.answering=false;
+}
+function handleContarAnswer(btn,correct){
+  if(state.answering)return; state.answering=true;
+  const ok=parseInt(btn.dataset.val)===correct;
+  btn.classList.add(ok?'correct':'wrong');
+  if(ok){state.score++;showFB(true);speak(getPositive());}
+  else{document.querySelectorAll('#contar-options .option-btn').forEach(b=>{if(b.dataset.correct==='true')b.classList.add('correct');});showFB(false);speak(`Eran ${correct}. ¡La próxima!`);}
+  setTimeout(()=>{hideFB();state.round++;renderContar();},1800);
+}
+
+// ══════════════════ LETRAS (audio + imagen) ══════════════════
+// Cada ronda alterna: 0=audio, 1=imagen, 0=audio, ...
+// type:'audio' → escucha la letra y elige
+// type:'imagen' → ve el emoji+palabra y elige con qué letra empieza
+
+let letrasData=[];
+
+function startLetras(){
+  state.score=0; state.round=0; state.answering=false;
+  showScreen('screen-letras'); updateBadges();
+
+  const audioPool = shuffle([...LETRAS[state.diff]]);
+  const imgPool   = shuffle([...EMOJI_PALABRAS[state.diff]]);
+
+  letrasData = [];
+  for(let i=0; i<state.totalRounds; i++){
+    if(i%2===0){
+      // audio round
+      letrasData.push({ type:'audio', letter: audioPool[i % audioPool.length] });
+    } else {
+      // imagen round
+      const item = imgPool[Math.floor(i/2) % imgPool.length];
+      letrasData.push({ type:'imagen', emoji: item.emoji, palabra: item.palabra, letter: item.letra });
+    }
+  }
+  renderLetras();
+}
+
+function renderLetras(){
+  if(state.round>=state.totalRounds){ endGame(); return; }
+  const round = letrasData[state.round];
+  renderDots('letras-dots', state.totalRounds, state.round);
+  document.getElementById('letras-score').textContent = `⭐ ${state.score}`;
+
+  const letterEl   = document.getElementById('letras-letter');
+  const questionEl = document.getElementById('letras-question');
+
+  if(round.type === 'audio'){
+    // Show speaker icon, play letter sound
+    letterEl.textContent   = '🔊';
+    letterEl.style.fontSize = '';
+    questionEl.textContent  = '¿Qué letra escuchas?';
+    // speak letter after short delay so UI is rendered
+    setTimeout(()=> speakLetter(round.letter), 400);
+  } else {
+    // Show emoji big + word underneath
+    const palabraOculta = '_' + round.palabra.slice(1);
+    letterEl.innerHTML = `<span style="font-size:clamp(4rem,10vw,8rem);line-height:1">${round.emoji}</span>
+      <span style="font-family:'Fredoka One',cursive;font-size:clamp(1.4rem,3vw,2.4rem);color:var(--text-dim);margin-top:8px;display:block">${palabraOculta}</span>`;
+    letterEl.style.fontSize = 'inherit';
+    questionEl.textContent  = '¿Con qué letra empieza?';
+    setTimeout(()=> speak(`¿Con qué letra empieza... ${round.palabra}?`), 300);
+  }
+
+  // Build options from the correct letter pool
+  const pool = LETRAS[state.diff];
+  const correct = round.letter;
+  const wrong = shuffle(pool.filter(l => l !== correct)).slice(0,2);
+  const opts  = shuffle([correct, ...wrong]);
+
+  const cont = document.getElementById('letras-options'); cont.innerHTML='';
+  opts.forEach((opt,i)=>{
+    const b = document.createElement('div');
+    b.className = 'option-btn'+(i===0?' focused':'');
+    b.textContent = opt;
+    b.dataset.val = opt;
+    b.dataset.correct = opt===correct ? 'true':'false';
+    b.addEventListener('click',()=> handleLetrasAnswer(b, correct, round));
+    cont.appendChild(b);
+  });
+  state.focusIdx=0; state.answering=false;
+}
+
+function speakLetter(letter){
+  // Repeat the letter twice so kids catch it clearly
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(`La letra... ${letter}... ${letter}`);
+  u.lang='es-ES'; u.rate=0.75; u.pitch=1.1;
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(v=>v.lang.startsWith('es')&&v.localService)||voices.find(v=>v.lang.startsWith('es'));
+  if(v) u.voice=v;
+  window.speechSynthesis.speak(u);
+  // Add a replay button hint
+  document.getElementById('letras-question').innerHTML =
+    '¿Qué letra escuchas? <span style="font-size:0.7em;color:var(--text-dim)">(OK en 🔊 para repetir)</span>';
+}
+
+function handleLetrasAnswer(btn, correct, round){
+  if(state.answering) return; state.answering=true;
+  const ok = btn.dataset.val === correct;
+  btn.classList.add(ok?'correct':'wrong');
+  if(ok){
+    state.score++;
+    showFB(true);
+    speak(getPositive());
+  } else {
+    document.querySelectorAll('#letras-options .option-btn').forEach(b=>{
+      if(b.dataset.correct==='true') b.classList.add('correct');
+    });
+    showFB(false);
+    if(round.type==='audio'){
+      speak(`Era la letra ${correct}. La letra... ${correct}`);
+    } else {
+      speak(`${round.palabra} empieza con ${correct}. ¡Sigue!`);
+    }
+  }
+  setTimeout(()=>{ hideFB(); state.round++; renderLetras(); }, 1900);
+}
+
+// ══════════════════ INTRUSO ══════════════════
+let intrusoData=[];
+function startIntruso(){
+  state.score=0;state.round=0;state.answering=false;
+  showScreen('screen-intruso');updateBadges();
+  intrusoData=shuffle([...INTRUSO_DATA]).slice(0,state.totalRounds);
+  renderIntruso();speak('¿Cuál no va con los demás?');
+}
+function renderIntruso(){
+  if(state.round>=state.totalRounds){endGame();return;}
+  const {items,intruso}=intrusoData[state.round];
+  renderDots('intruso-dots',state.totalRounds,state.round);
+  document.getElementById('intruso-score').textContent=`⭐ ${state.score}`;
+  const cont=document.getElementById('intruso-options');cont.innerHTML='';
+  items.forEach((item,i)=>{
+    const b=document.createElement('div');
+    b.className='intruso-btn'+(i===0?' focused':'');
+    b.innerHTML=`<span>${item}</span>`;b.dataset.idx=i;b.dataset.correct=i===intruso?'true':'false';
+    b.addEventListener('click',()=>handleIntrusoAnswer(b,intruso,i));
+    cont.appendChild(b);
+  });
+  state.focusIdx=0;state.answering=false;
+}
+function handleIntrusoAnswer(btn,correctIdx,chosen){
+  if(state.answering)return;state.answering=true;
+  const ok=chosen===correctIdx;
+  btn.classList.add(ok?'correct':'wrong');
+  if(ok){state.score++;showFB(true);speak(getPositive());}
+  else{document.querySelectorAll('#intruso-options .intruso-btn').forEach((b,i)=>{if(i===correctIdx)b.classList.add('correct');});showFB(false);speak('¡Casi! Esa no era.');}
+  setTimeout(()=>{hideFB();state.round++;renderIntruso();},1800);
+}
+
+
+// ══════════════════ PLANETAS ══════════════════
+const PLANETAS_DATA = [
+  {
+    nombre: 'Mercurio',
+    img: 'https://images-assets.nasa.gov/image/PIA00271/PIA00271~thumb.jpg',
+    pistas: ['Soy el planeta más pequeño del sistema solar', 'Estoy más cerca del Sol', 'Soy muy caliente de día y muy frío de noche'],
+  },
+  {
+    nombre: 'Venus',
+    img: 'https://images-assets.nasa.gov/image/PIA00104/PIA00104~thumb.jpg',
+    pistas: ['Soy el planeta más caliente de todos', 'Brillo mucho en el cielo — me llaman la estrella de la mañana', 'Estoy cubierto de nubes espesas'],
+  },
+  {
+    nombre: 'La Tierra',
+    img: 'https://images-assets.nasa.gov/image/PIA18033/PIA18033~thumb.jpg',
+    pistas: ['Soy el planeta azul', 'Aquí viven todos los seres humanos', 'Tengo agua en mi superficie'],
+  },
+  {
+    nombre: 'Marte',
+    img: 'https://images-assets.nasa.gov/image/PIA00407/PIA00407~thumb.jpg',
+    pistas: ['Soy el planeta rojo', 'Tengo los volcanes más grandes del sistema solar', 'Los robots de la NASA me exploran'],
+  },
+  {
+    nombre: 'Júpiter',
+    img: 'https://images-assets.nasa.gov/image/PIA21775/PIA21775~thumb.jpg',
+    pistas: ['Soy el planeta más grande de todos', 'Tengo una gran mancha roja — ¡es una tormenta gigante!', 'Tengo más de 90 lunas'],
+  },
+  {
+    nombre: 'Saturno',
+    img: 'https://images-assets.nasa.gov/image/PIA07782/PIA07782~thumb.jpg',
+    pistas: ['Tengo hermosos anillos a mi alrededor', 'Soy el segundo planeta más grande', 'Mis anillos están hechos de hielo y roca'],
+  },
+  {
+    nombre: 'Urano',
+    img: 'https://images-assets.nasa.gov/image/PIA18182/PIA18182~thumb.jpg',
+    pistas: ['Soy de color azul verdoso', 'Giro de lado — como una pelota rodando', 'Soy muy frío por dentro'],
+  },
+  {
+    nombre: 'Neptuno',
+    img: 'https://images-assets.nasa.gov/image/PIA01492/PIA01492~thumb.jpg',
+    pistas: ['Soy el planeta más lejano del Sol', 'Tengo los vientos más fuertes del sistema solar', 'Soy de color azul intenso'],
+  },
+];
+
+const TODOS_NOMBRES = PLANETAS_DATA.map(p => p.nombre);
+
+let planetasData = [];
+
+function startPlanetas() {
+  state.score = 0; state.round = 0; state.answering = false;
+  showScreen('screen-planetas'); updateBadges();
+  // Pick 5 random planets, assign a random pista each
+  planetasData = shuffle([...PLANETAS_DATA]).slice(0, state.totalRounds).map(p => ({
+    ...p,
+    pista: p.pistas[Math.floor(Math.random() * p.pistas.length)],
+  }));
+  renderPlaneta();
+  speak('¡Vamos a los planetas! Escucha la pista y adivina cuál planeta es.');
+}
+
+function renderPlaneta() {
+  if (state.round >= state.totalRounds) { endGame(); return; }
+  const planet = planetasData[state.round];
+  renderDots('planetas-dots', state.totalRounds, state.round);
+  document.getElementById('planetas-score').textContent = `⭐ ${state.score}`;
+  document.getElementById('planetas-hint').textContent = planet.pista;
+
+  // Load image with fallback color
+  const img = document.getElementById('planetas-img');
+  img.src = planet.img;
+  img.onerror = () => { img.style.display='none'; };
+  img.onload  = () => { img.style.display='block'; };
+
+  // 3 options: correct + 2 random wrong names
+  const wrong = shuffle(TODOS_NOMBRES.filter(n => n !== planet.nombre)).slice(0, 2);
+  const opts  = shuffle([planet.nombre, ...wrong]);
+
+  const cont = document.getElementById('planetas-options'); cont.innerHTML = '';
+  opts.forEach((opt, i) => {
+    const b = document.createElement('div');
+    b.className = 'planet-opt' + (i === 0 ? ' focused' : '');
+    b.textContent = opt;
+    b.dataset.val = opt;
+    b.dataset.correct = opt === planet.nombre ? 'true' : 'false';
+    b.addEventListener('click', () => handlePlanetaAnswer(b, planet.nombre));
+    cont.appendChild(b);
+  });
+  state.focusIdx = 0; state.answering = false;
+
+  // Speak the hint after a short delay
+  setTimeout(() => speak(planet.pista), 500);
+}
+
+function handlePlanetaAnswer(btn, correct) {
+  if (state.answering) return; state.answering = true;
+  const ok = btn.dataset.val === correct;
+  btn.classList.add(ok ? 'correct' : 'wrong');
+  if (ok) {
+    state.score++;
+    showFB(true);
+    speak(getPositive() + `. ¡Es ${correct}!`);
+  } else {
+    document.querySelectorAll('#planetas-options .planet-opt').forEach(b => {
+      if (b.dataset.correct === 'true') b.classList.add('correct');
+    });
+    showFB(false);
+    speak(`Era ${correct}. ${planetasData[state.round]?.pista}`);
+  }
+  setTimeout(() => { hideFB(); state.round++; renderPlaneta(); }, 2200);
+}
+
+// ══════════════════ END GAME ══════════════════
+function endGame(){
+  const pct=state.score/state.totalRounds;
+  const emoji=pct===1?'🏆':pct>=0.6?'🎉':'💪';
+  const msg=pct===1?'¡Perfecto! ¡Todo bien!':pct>=0.6?`¡Muy bien! ${state.score} de ${state.totalRounds}`:`¡Buen intento! ${state.score} de ${state.totalRounds}`;
+  showFB(pct>=0.6,emoji,msg);speak(msg);
+  setTimeout(()=>{hideFB();goMenu();},3000);
+}
+
+// ══ Init ══
+speak('¡Bienvenido! ¿Quién juega hoy?');
+</script>
+</body>
+</html>
