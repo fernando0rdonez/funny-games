@@ -20,7 +20,8 @@
     --focus-ring: 0 0 0 6px var(--accent1);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; cursor: none; }
+  *:focus { outline: none; }
 
   body {
     background: var(--bg);
@@ -583,6 +584,7 @@ function navItems(containerId, selector, e, mode, onSelect) {
   items[state.focusIdx].classList.remove('focused');
   state.focusIdx = idx;
   items[idx].classList.add('focused');
+  items[idx].focus();
   e.preventDefault();
 }
 
@@ -659,7 +661,7 @@ function resetFocus(containerId, selector) {
   state.focusIdx = 0;
   const items = document.querySelectorAll(`#${containerId} ${selector}`);
   items.forEach(i => i.classList.remove('focused'));
-  if (items[0]) items[0].classList.add('focused');
+  if (items[0]) { items[0].classList.add('focused'); items[0].focus(); }
 }
 
 // ══════════════════ CLICK SUPPORT ══════════════════
@@ -1111,6 +1113,7 @@ function endGame(){
 
 // ══ Init ══
 speak('¡Bienvenido! ¿Quién juega hoy?');
+document.querySelector('#avatar-grid .sel-card')?.focus();
 </script>
 </body>
 </html>
